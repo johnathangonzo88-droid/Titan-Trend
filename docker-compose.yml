@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  cronus-bot:
+    build: .
+    image: cronus-trading-bot:latest
+    container_name: cronus-trading-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+    command: ["scripts/live_signal.py", "--forever"]
+
+  # One-off training job: `docker compose run --rm trainer`
+  trainer:
+    build: .
+    image: cronus-trading-bot:latest
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+    command: ["scripts/train.py"]
+    profiles: ["tools"]
+
+  # One-off backtest job: `docker compose run --rm backtester`
+  backtester:
+    build: .
+    image: cronus-trading-bot:latest
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+    command: ["scripts/backtest.py"]
+    profiles: ["tools"]
