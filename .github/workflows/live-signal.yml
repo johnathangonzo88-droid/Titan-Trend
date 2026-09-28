@@ -1,0 +1,55 @@
+name: Live Signal Bot
+
+# Runs `scripts/live_signal.py --once` on a schedule, as described in the
+# README's "Deploying on a schedule" section. Requires the TELEGRAM_BOT_TOKEN
+# and TELEGRAM_CHAT_IDS repository secrets (Settings > Secrets and variables >
+# Actions) — see .env.example for what each one is.
+#
+# The bundled CsvReplayDataSource checks the most recent bar in data/raw/, so
+# this validates the pipeline end-to-end but won't see new market data until
+# src/data_layer/live_feed.py is wired up to a real feed.
+#
+# 15 minutes matches the ES/NQ timeframe; lower it to */5 to match MES/MNQ,
+# but note GitHub's scheduled runs are best-effort and can run late,
+# especially at higher frequency.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: live-signal
+  cancel-in-progress: false
+
+jobs:
+  signal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Cache trained models
+        id: model-cache
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: models-${{ hashFiles('data/raw/**', 'config/config.yaml', 'src/ml/**', 'src/features/**') }}
+
+      - name: Train models (cache miss)
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        run: python scripts/train.py
+
+      - name: Check for a new signal
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+          LIVE_DATA_SOURCE: csv
+        run: python scripts/live_signal.py --once
