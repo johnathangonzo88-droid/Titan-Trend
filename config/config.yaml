@@ -1,0 +1,136 @@
+# =============================================================================
+# Cronus Trading Bot - Main Configuration
+# =============================================================================
+# All strategy, ML, backtest, and bot parameters live here so behaviour can be
+# tuned without touching code. Secrets (tokens, chat IDs) go in .env, NOT here.
+
+project:
+  name: "Cronus Trading Bot"
+  strategy_name: "Titan Trend"   # displayed in Telegram signal messages and reports
+  timezone: "America/Chicago"
+  log_level: "INFO"
+  log_dir: "logs"
+
+# ---------------------------------------------------------------------------
+# Symbols this deployment tracks. Each entry maps a friendly symbol name to
+# its raw data file (for backtesting/training) and its live data source.
+# `ml_enabled` gates whether the ML confidence score is computed for this
+# symbol - symbols with too little history should stay rule-based only.
+# ---------------------------------------------------------------------------
+symbols:
+  - name: "ES"
+    description: "E-mini S&P 500"
+    timeframe: "15m"
+    raw_file: "data/raw/ES_15m.csv"
+    ml_enabled: true
+    tick_size: 0.25
+    point_value: 50.0        # $ per full point, per contract (E-mini)
+  - name: "NQ"
+    description: "E-mini Nasdaq-100"
+    timeframe: "15m"
+    raw_file: "data/raw/NQ_15m.csv"
+    ml_enabled: true
+    tick_size: 0.25
+    point_value: 20.0        # $ per full point, per contract (E-mini)
+  - name: "MES"
+    description: "Micro E-mini S&P 500"
+    timeframe: "5m"
+    raw_file: "data/raw/MES_5m.csv"
+    ml_enabled: false        # insufficient history (~2 weeks) for ML CV
+    tick_size: 0.25
+    point_value: 5.0
+  - name: "MNQ"
+    description: "Micro E-mini Nasdaq-100"
+    timeframe: "5m"
+    raw_file: "data/raw/MNQ_5m.csv"
+    ml_enabled: false        # insufficient history (~7 weeks) for ML CV
+    tick_size: 0.25
+    point_value: 2.0
+
+# ---------------------------------------------------------------------------
+# Feature engineering / indicator parameters
+# ---------------------------------------------------------------------------
+features:
+  rsi_period: 14
+  stoch_rsi_period: 14
+  stoch_k: 3
+  stoch_d: 3
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  ema_periods: [9, 21, 50, 200]
+  sma_periods: [20, 50]
+  bollinger_period: 20
+  bollinger_std: 2.0
+  atr_period: 14
+  adx_period: 14
+  vwap_window: 20          # rolling proxy VWAP window (no true volume available)
+  volume_proxy_window: 20  # window for range/tick-based participation proxy
+  regime_lookback: 50
+
+# ---------------------------------------------------------------------------
+# Strategy rules (see src/strategy/strategy.py)
+# ---------------------------------------------------------------------------
+strategy:
+  # trend filter
+  trend_ema_fast: 21
+  trend_ema_slow: 50
+  # momentum thresholds
+  rsi_oversold: 35
+  rsi_overbought: 65
+  stoch_rsi_oversold: 20
+  stoch_rsi_overbought: 80
+  # volatility filter - skip trading when ATR% below this (too quiet) or the
+  # regime detector flags "volatile" chaos beyond this bound
+  min_atr_pct: 0.03         # ATR as % of price must exceed this to trade
+  max_atr_pct: 3.0          # avoid extreme volatility spikes
+  # volume-proxy confirmation
+  volume_proxy_z_threshold: 0.3
+  # risk management
+  # NOTE: atr_tp1_multiplier / atr_stop_multiplier must be >= min_risk_reward,
+  # since both TP and SL are scaled off the same ATR value at signal time -
+  # otherwise every signal is vetoed by the risk/reward filter before it can fire.
+  atr_stop_multiplier: 1.5
+  atr_tp1_multiplier: 2.25
+  atr_tp2_multiplier: 4.0
+  risk_per_trade_pct: 1.0     # % of account equity risked per trade
+  max_concurrent_positions: 3
+  min_risk_reward: 1.5
+
+# ---------------------------------------------------------------------------
+# Machine learning
+# ---------------------------------------------------------------------------
+ml:
+  label_horizon_bars: 8        # bars forward used to build the label
+  label_atr_multiplier: 1.0    # move required (in ATR units) to count as a signal
+  walk_forward:
+    train_window_bars: 1500
+    test_window_bars: 300
+    step_bars: 300
+    min_train_bars: 800
+  models:
+    - "random_forest"
+    - "gradient_boosting"
+    - "hist_gradient_boosting"
+    - "xgboost"       # used only if the xgboost package is installed
+    - "lightgbm"      # used only if the lightgbm package is installed
+    - "catboost"      # used only if the catboost package is installed
+  cv_splits: 5
+  model_dir: "models"
+
+# ---------------------------------------------------------------------------
+# Backtest engine
+# ---------------------------------------------------------------------------
+backtest:
+  initial_equity: 50000.0
+  commission_per_trade: 4.0     # round-turn commission, $
+  slippage_ticks: 1
+  report_dir: "reports"
+
+# ---------------------------------------------------------------------------
+# Telegram bot
+# ---------------------------------------------------------------------------
+telegram:
+  poll_interval_seconds: 60      # how often live_signal.py checks for a new bar
+  parse_mode: "HTML"
+  subscribers_file: "data/processed/subscribers.json"
