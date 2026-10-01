@@ -9,9 +9,9 @@ name: Live Signal Bot
 # this validates the pipeline end-to-end but won't see new market data until
 # src/data_layer/live_feed.py is wired up to a real feed.
 #
-# 15 minutes matches the ES/NQ timeframe; lower it to */5 to match MES/MNQ,
-# but note GitHub's scheduled runs are best-effort and can run late,
-# especially at higher frequency.
+# 15 minutes matches the ES/NQ timeframe (the only symbols configured in
+# config/config.yaml). Note GitHub's scheduled runs are best-effort and can
+# run late, especially at higher frequency.
 
 on:
   schedule:

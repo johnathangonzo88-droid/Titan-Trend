@@ -32,20 +32,6 @@ symbols:
     ml_enabled: true
     tick_size: 0.25
     point_value: 20.0        # $ per full point, per contract (E-mini)
-  - name: "MES"
-    description: "Micro E-mini S&P 500"
-    timeframe: "5m"
-    raw_file: "data/raw/MES_5m.csv"
-    ml_enabled: false        # insufficient history (~2 weeks) for ML CV
-    tick_size: 0.25
-    point_value: 5.0
-  - name: "MNQ"
-    description: "Micro E-mini Nasdaq-100"
-    timeframe: "5m"
-    raw_file: "data/raw/MNQ_5m.csv"
-    ml_enabled: false        # insufficient history (~7 weeks) for ML CV
-    tick_size: 0.25
-    point_value: 2.0
 
 # ---------------------------------------------------------------------------
 # Feature engineering / indicator parameters
